@@ -1,0 +1,18 @@
+[
+
+  {
+    "foo": { 
+		"desc": "foo是一个默认参数",
+		"default_value": "bar",
+		"required": false
+	}
+  },
+  
+  {
+    "foo1.foo2.foo3": { 
+		"desc": "foo1.foo2.foo3是一个默认参数",
+		"default_value": "bar1"
+	}
+  },
+  ...
+]
