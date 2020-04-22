@@ -58,12 +58,6 @@ func (controller RemoteHelm) Values(c *gin.Context) {
 		c.Error(err)
 	}
 
-	// b, err := json.MarshalIndent(chart.Metadata, "", "\t")
-	// if err != nil {
-	// 	c.Error(err)
-	// }
-	// fmt.Println(string(b))
-
 	// print values
 	vl := chartutil.FromYaml(chart.Values.Raw)
 	f, err := flat.Flatten(vl, nil)
@@ -74,69 +68,42 @@ func (controller RemoteHelm) Values(c *gin.Context) {
 	if err != nil {
 		c.Error(err)
 	}
-	//fmt.Println(string(v))
-	// m := pretty.Pretty(v)
-	//m := "[\n" + (v) + "]"
 	fmt.Println(string(v))
 	c.String(http.StatusOK, "json已打印！")
-	//data,err := httpgetter.Get(v)
-	//k := bytes.NewReader(data.Bytes())
-	// chart, err := chartutil.LoadArchive(v)
-	// now := timeconv.Now()
-	// // test Render
-	// renderOpts := renderutil.Options{
-	// 	ReleaseOptions: chartutil.ReleaseOptions{
-	// 		Name:      "test_release",
-	// 		IsInstall: true,
-	// 		IsUpgrade: false,
-	// 		Time:      now,
-	// 		Namespace: "defult",
-	// 	},
-	// 	KubeVersion: "1.11.5",
-	// }
 
-	// //config := &helmchart.Config{Raw: string(chart.Values.Raw), Values: map[string]*helmchart.Value{}}
-
-	// renderedTemplates, err := renderutil.Render(chart, config, renderOpts)
-	// if err != nil {
-	// 	fmt.Println(err)
-	// }
-	// listManifests := manifest.SplitManifests(renderedTemplates)
-	// for _, manifest := range listManifests {
-	// 	fmt.Println(chartutil.ToYaml(manifest))
-	// }
-	// c.String(http.StatusOK, "yaml已打印")
 }
+
 
 // Manifest defined
 func (controller RemoteHelm) Manifest(c *gin.Context) {
-	//var vv = `G:\d.json`
-	// xx, err := chartutil.LoadChartfile("./d.json")
-	// if err != nil {
-	// 	c.Error(err)
-	// }
-	// fmt.Println(xx);
-	// ohttpgetter, err := hgetter.NewHTTPGetter(xx.String(), "", "", "")
-
-	// if err != nil {
-	// 	c.Error(err)
-	// }
-
-	// data, err := ohttpgetter.Get(xx.String())
-
-	// r := bytes.NewReader(data.Bytes())
-
-	tobeconverted, err := ioutil.ReadFile("./d.json")
-
-	// Declared an empty map interface
-	var result map[string]interface{}
-
-	// Unmarshal or Decode the JSON to the interface.
-	chart := json.Unmarshal([]byte(tobeconverted), &result)
+		u, err := url.Parse(repoURL)
+	if err != nil {
+		c.Error(err)
+	}
+	httpgetter, err := hgetter.NewHTTPGetter(u.String(), "", "", "")
 
 	if err != nil {
 		c.Error(err)
 	}
+
+	data, err := httpgetter.Get(u.String())
+
+	if err != nil {
+		c.Error(err)
+	}
+
+	r := bytes.NewReader(data.Bytes())
+
+	chart, err := chartutil.LoadArchive(r)
+
+	//accept the json paramaters
+	tobeconverted, _ := ioutil.ReadFile("./d.json")
+
+	// Declared an empty map interface
+	var result map[string]*helmchart.Value
+ 
+	// Unmarshal or Decode the JSON to the interface.
+	_ = json.Unmarshal([]byte(tobeconverted), &result)
 
 	now := timeconv.Now()
 	// test Render
@@ -150,7 +117,7 @@ func (controller RemoteHelm) Manifest(c *gin.Context) {
 		},
 		KubeVersion: "1.11.5",
 	}
-	config := &helmchart.Config{Raw: string(chart.Values.Raw), Values: map[string]*helmchart.Value{}}
+	config := &helmchart.Config{Raw: string(chart.Values.Raw), Values: result}
 	renderedTemplates, err := renderutil.Render(chart, config, renderOpts)
 	if err != nil {
 		fmt.Println(err)
