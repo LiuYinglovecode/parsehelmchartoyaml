@@ -17,7 +17,7 @@ func setupRouter() *gin.Engine {
 
 	RemoteHelm := NewRemoteHelm()
 	router.GET("/1/helm/values", RemoteHelm.Values)
-	router.GET("/1/helm/upload", RemoteHelm.Manifest)
+	router.GET("/1/helm/upload", RemoteHelm.Mani)
 
 	return router
 }
