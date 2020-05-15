@@ -4,25 +4,31 @@ import (
 	"basic-gin2/pkg/util/flat"
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"regexp"
+
 	//"errors"
 	"io"
-	"io/ioutil"
+	//"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
+
+	//"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"k8s.io/helm/pkg/chartutil"
+	"k8s.io/helm/pkg/engine"
+	"k8s.io/helm/pkg/tiller"
+	"k8s.io/helm/pkg/timeconv"
 
 	//"k8s.io/helm/pkg/getter"
 	"fmt"
 
-	"k8s.io/helm/pkg/timeconv"
+	//"k8s.io/helm/pkg/timeconv"
 	//vals "github.com/helm/cmd/helm"
 	"github.com/ghodss/yaml"
-	//"path/filepath"
+	"path/filepath"
 
 	hgetter "k8s.io/helm/pkg/getter"
 	//"fmt"
@@ -30,14 +36,14 @@ import (
 	helmchart "k8s.io/helm/pkg/proto/hapi/chart"
 	//"k8s.io/helm/pkg/renderutil"
 	//"k8s.io/helm/pkg/strvals"
-	"regexp"
+	//"regexp"
 	"text/template"
 
-	"github.com/Masterminds/semver"
+	//"github.com/Masterminds/semver"
 	"github.com/Masterminds/sprig"
-	"k8s.io/helm/pkg/engine"
+	//"k8s.io/helm/pkg/engine"
 	util "k8s.io/helm/pkg/releaseutil"
-	"k8s.io/helm/pkg/tiller"
+	//"k8s.io/helm/pkg/tiller"
 	tversion "k8s.io/helm/pkg/version"
 )
 
@@ -221,164 +227,74 @@ func checkDependencies(ch *helmchart.Chart, reqs *chartutil.Requirements) error 
 
 // func (t *templateCmd) run() error {
 
-func (controller RemoteHelm) Mani(c *gin.Context) {
-	// verify specified templates exist relative to chart
-	rf := []string{}
-	//var err error
-	var t templateCmd
-	// 临时加的，先试试
-	//accept the json paramaters
-	tobeconverted, _ := ioutil.ReadFile("./d.json")
+// func (controller RemoteHelm) Mani(c *gin.Context) {
+// 	// verify specified templates exist relative to chart
+// 	rf := []string{}
+// 	//var err error
+// 	var t templateCmd
+// 	// 临时加的，先试试
+// 	//accept the json paramaters
+// 	tobeconverted, _ := ioutil.ReadFile("./d.json")
 
-	var result map[string]*helmchart.Value
+// 	var result map[string]*helmchart.Value
 
-	// Unmarshal or Decode the JSON to the interface.
-	json.Unmarshal([]byte(tobeconverted), &result)
+// 	// Unmarshal or Decode the JSON to the interface.
+// 	json.Unmarshal([]byte(tobeconverted), &result)
 
-	// get combined values and create config
-	rawVals, err := vals(t.valueFiles, t.values, t.stringValues)
-	if err != nil {
-		c.Error(err)
-	}
-	config := &helmchart.Config{Raw: string(rawVals), Values: result}
+// 	u, err := url.Parse(repoURL)
+// 	if err != nil {
+// 		c.Error(err)
+// 	}
+// 	httpgetter, err := hgetter.NewHTTPGetter(u.String(), "", "", "")
 
-	// If template is specified, try to run the template.
-	if t.nameTemplate != "" {
-		t.releaseName, err = generateName(t.nameTemplate)
-		// if err != nil {
-		// 	return err
-		// }
-		if err != nil {
-		c.Error(err)
-	}
-	}
+// 	if err != nil {
+// 		c.Error(err)
+// 	}
 
-	var chartPath = "./redis-9.3.0.tgz"
-	// Check chart requirements to make sure all dependencies are present in /charts
-	l, err := chartutil.Load(chartPath)
-	if err != nil {
-		 c.Error(err)
-	}
+// 	data, err := httpgetter.Get(u.String())
 
-	if req, err := chartutil.LoadRequirements(l); err == nil {
-		if err := checkDependencies(l, req); err != nil {
-			 c.Error(err)
-		}
-	} else if err != chartutil.ErrRequirementsNotFound {
-			c.Error(err)
-	}
-	options := chartutil.ReleaseOptions{
-		Name:      t.releaseName,
-		Time:      timeconv.Now(),
-		Namespace: t.namespace,
-	}
+// 	if err != nil {
+// 		c.Error(err)
+// 	}
 
-	err = chartutil.ProcessRequirementsEnabled(l, config)
-	if err != nil {
-		c.Error(err) 
-	}
+// 	r := bytes.NewReader(data.Bytes())
 
-	err = chartutil.ProcessRequirementsImportValues(l)
-	if err != nil {
-		c.Error(err)
-	}
+// 	l, err := chartutil.LoadArchive(r)
 
-	// Set up engine.
-	renderer := engine.New()
+// 	// get combined values and create config
+// 	rawVals, err := vals(t.valueFiles, t.values, t.stringValues)
+// 	if err != nil {
+// 		c.Error(err)
+// 	}
+// 	config := &helmchart.Config{Raw: string(rawVals), Values: result}
 
-	caps := &chartutil.Capabilities{
-		APIVersions:   chartutil.DefaultVersionSet,
-		KubeVersion:   chartutil.DefaultKubeVersion,
-		TillerVersion: tversion.GetVersionProto(),
-	}
+// 	// If template is specified, try to run the template.
+// 	if t.nameTemplate != "" {
+// 		t.releaseName, err = generateName(t.nameTemplate)
+// 		// if err != nil {
+// 		// 	return err
+// 		// }
+// 		if err != nil {
+// 		c.Error(err)
+// 	}
+// 	}
 
-	// kubernetes version
-	kv, err := semver.NewVersion(t.kubeVersion)
-	// if err != nil {
-	// 	return fmt.Errorf("could not parse a kubernetes version: %v", err)
-	// }
-	if err != nil {
-		c.Error(err)
-	}
-	caps.KubeVersion.Major = fmt.Sprint(kv.Major())
-	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
-	caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
 
-	vals, err := chartutil.ToRenderValuesCaps(l, config, options, caps)
-	// if err != nil {
-	// 	return err
-	// }
-	if err != nil {
-		c.Error(err)
-	}
+// 	options := chartutil.ReleaseOptions{
+// 		Name:      t.releaseName,
+// 		Time:      timeconv.Now(),
+// 		Namespace: t.namespace,
+// 	}
 
-	out, err := renderer.Render(l, vals)
-	listManifests := []tiller.Manifest{}
-	// if err != nil {
-	// 	return err
-	// }
-	if err != nil {
-		c.Error(err)
-	}
+// 	err = chartutil.ProcessRequirementsEnabled(l, config)
+// 	if err != nil {
+// 		c.Error(err) 
+// 	}
 
-	// extract kind and name
-	re := regexp.MustCompile("kind:(.*)\n")
-	for k, v := range out {
-		match := re.FindStringSubmatch(v)
-		h := "Unknown"
-		if len(match) == 2 {
-			h = strings.TrimSpace(match[1])
-		}
-		m := tiller.Manifest{Name: k, Content: v, Head: &util.SimpleHead{Kind: h}}
-		listManifests = append(listManifests, m)
-	}
-	in := func(needle string, haystack []string) bool {
-		// make needle path absolute
-		d := strings.Split(needle, string(os.PathSeparator))
-		dd := d[1:]
-		an := filepath.Join(chartPath, strings.Join(dd, string(os.PathSeparator)))
-
-		for _, h := range haystack {
-			if h == an {
-				return true
-			}
-		}
-		return false
-	}
-	// if settings.Debug {
-	// 	rel := &release.Release{
-	// 		Name:      t.releaseName,
-	// 		Chart:     c,
-	// 		Config:    config,
-	// 		Version:   1,
-	// 		Namespace: t.namespace,
-	// 		Info:      &release.Info{LastDeployed: timeconv.Timestamp(time.Now())},
-	// 	}
-	// 	printRelease(os.Stdout, rel)
-	// }
-
-	for _, m := range tiller.SortByKind(listManifests) {
-		if len(t.renderFiles) > 0 && !in(m.Name, rf) {
-			continue
-		}
-		data := m.Content
-		b := filepath.Base(m.Name)
-		if !t.showNotes && b == "NOTES.txt" {
-			continue
-		}
-		if strings.HasPrefix(b, "_") {
-			continue
-		}
-
-		fmt.Printf("---\n# Source: %s\n", m.Name)
-		fmt.Println(data)
-	}
-	//return err
-}
-
-// Manifest defined
-// func (controller RemoteHelm) Manifest(c *gin.Context) {
-// 	var t templateCmd 
+// 	err = chartutil.ProcessRequirementsImportValues(l)
+// 	if err != nil {
+// 		c.Error(err)
+// 	}
 
 // 	// Set up engine.
 // 	renderer := engine.New()
@@ -389,63 +305,34 @@ func (controller RemoteHelm) Mani(c *gin.Context) {
 // 		TillerVersion: tversion.GetVersionProto(),
 // 	}
 
-// 	// Check chart requirements to make sure all dependencies are present in /charts
-// 	l, err := chartutil.Load(t.chartPath)
+// 	// kubernetes version
+// 	kv, err := semver.NewVersion(t.kubeVersion)
+// 	// if err != nil {
+// 	// 	return fmt.Errorf("could not parse a kubernetes version: %v", err)
+// 	// }
 // 	if err != nil {
 // 		c.Error(err)
 // 	}
-// 	// u, err := url.Parse(repoURL)
-// 	// if err != nil {
-// 	// 	c.Error(err)
-// 	// }
-// 	// httpgetter, err := hgetter.NewHTTPGetter(u.String(), "", "", "")
+// 	caps.KubeVersion.Major = fmt.Sprint(kv.Major())
+// 	caps.KubeVersion.Minor = fmt.Sprint(kv.Minor())
+// 	caps.KubeVersion.GitVersion = fmt.Sprintf("v%d.%d.0", kv.Major(), kv.Minor())
 
-// 	// if err != nil {
-// 	// 	c.Error(err)
-// 	// }
-
-// 	// data, err := httpgetter.Get(u.String())
-
-// 	// if err != nil {
-// 	// 	c.Error(err)
-// 	// }
-
-// 	// r := bytes.NewReader(data.Bytes())
-
-// 	//chart, err := chartutil.LoadArchive(r)
-
-// 	//accept the json paramaters
-// 	tobeconverted, _ := ioutil.ReadFile("./d.json")
-
-// 	// Declared an empty map interface
-// 	var result map[string]*helmchart.Value
-
-// 	// Unmarshal or Decode the JSON to the interface.
-// 	json.Unmarshal([]byte(tobeconverted), &result)
-// 	// get combined values and create config
-// 	rawVals, err := vals(t.valueFiles, t.values, t.stringValues)
-// 	if err != nil {
-// 		c.Error(err)
-// 	}
-
-// 	config := &helmchart.Config{Raw: string(rawVals), Values: result}
-
-// 	options := chartutil.ReleaseOptions{
-// 		Name:      t.releaseName,
-// 		Time:      timeconv.Now(),
-// 		Namespace: t.namespace,
-// 	}
 // 	vals, err := chartutil.ToRenderValuesCaps(l, config, options, caps)
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
 // 	if err != nil {
 // 		c.Error(err)
 // 	}
 
 // 	out, err := renderer.Render(l, vals)
+// 	listManifests := []tiller.Manifest{}
+// 	// if err != nil {
+// 	// 	return err
+// 	// }
 // 	if err != nil {
 // 		c.Error(err)
 // 	}
-
-// 	listManifests := []tiller.Manifest{}
 
 // 	// extract kind and name
 // 	re := regexp.MustCompile("kind:(.*)\n")
@@ -458,10 +345,140 @@ func (controller RemoteHelm) Mani(c *gin.Context) {
 // 		m := tiller.Manifest{Name: k, Content: v, Head: &util.SimpleHead{Kind: h}}
 // 		listManifests = append(listManifests, m)
 // 	}
-// 	// If template is specified, try to run the template.
-// 	if t.nameTemplate != "" {
-// 		t.releaseName, _ = generateName(t.nameTemplate)
+// 	in := func(needle string, haystack []string) bool {
+// 		// make needle path absolute
+// 		d := strings.Split(needle, string(os.PathSeparator))
+// 		dd := d[1:]
+// 		an := filepath.Join(chartPath, strings.Join(dd, string(os.PathSeparator)))
 
+// 		for _, h := range haystack {
+// 			if h == an {
+// 				return true
+// 			}
+// 		}
+// 		return false
 // 	}
-// 	c.String(http.StatusOK, "yaml已打印")
- //}
+
+// 	for _, m := range tiller.SortByKind(listManifests) {
+// 		if len(t.renderFiles) > 0 && !in(m.Name, rf) {
+// 			continue
+// 		}
+// 		data := m.Content
+// 		b := filepath.Base(m.Name)
+// 		if !t.showNotes && b == "NOTES.txt" {
+// 			continue
+// 		}
+// 		if strings.HasPrefix(b, "_") {
+// 			continue
+// 		}
+
+// 		fmt.Printf("---\n# Source: %s\n", m.Name)
+// 		fmt.Println(data)
+// 	}
+// 	//return err
+// }
+
+// Mani defined
+func (controller RemoteHelm) Mani(c *gin.Context) {
+	var t templateCmd 
+
+	//Set up engine.
+	renderer := engine.New()
+
+	caps := &chartutil.Capabilities{
+		APIVersions:   chartutil.DefaultVersionSet,
+		KubeVersion:   chartutil.DefaultKubeVersion,
+		TillerVersion: tversion.GetVersionProto(),
+	}
+
+	// Check chart requirements to make sure all dependencies are present in /charts
+	l, err := chartutil.Load("G:/redis-9.3.0.tgz")
+	if err != nil {
+		c.Error(err)
+	}
+	// u, err := url.Parse(repoURL)
+	// if err != nil {
+	// 	c.Error(err)
+	// }
+	// httpgetter, err := hgetter.NewHTTPGetter(u.String(), "", "", "")
+
+	// if err != nil {
+	// 	c.Error(err)
+	// }
+
+	// data, err := httpgetter.Get(u.String())
+
+	// if err != nil {
+	// 	c.Error(err)
+	// }
+
+	// r := bytes.NewReader(data.Bytes())
+
+	//chart, err := chartutil.LoadArchive(r)
+
+	//accept the json paramaters
+	tobeconverted, _ := ioutil.ReadFile("./d.json")
+
+	// // Declared an empty map interface
+	var result map[string]*helmchart.Value
+
+	// // Unmarshal or Decode the JSON to the interface.
+	json.Unmarshal([]byte(tobeconverted), &result)
+	// get combined values and create config
+	rawVals, err := vals(t.valueFiles, t.values, t.stringValues)
+	if err != nil {
+		c.Error(err)
+	}
+	fmt.Println(rawVals)
+
+	config := &helmchart.Config{Raw: string(rawVals), Values: result}
+
+	options := chartutil.ReleaseOptions{
+		Name:      t.releaseName,
+		Time:      timeconv.Now(),
+		Namespace: t.namespace,
+	}
+	vals, err := chartutil.ToRenderValuesCaps(l, config, options, caps)
+	if err != nil {
+		c.Error(err)
+	}
+
+	out, err := renderer.Render(l, vals)
+	if err != nil {
+		c.Error(err)
+	}
+
+	listManifests := []tiller.Manifest{}
+
+	// extract kind and name
+	re := regexp.MustCompile("kind:(.*)\n")
+	for k, v := range out {
+		match := re.FindStringSubmatch(v)
+		h := "Unknown"
+		if len(match) == 2 {
+			h = strings.TrimSpace(match[1])
+		}
+		m := tiller.Manifest{Name: k, Content: v, Head: &util.SimpleHead{Kind: h}}
+		listManifests = append(listManifests, m)
+	}
+
+	for _, m := range tiller.SortByKind(listManifests) {
+	data := m.Content
+		b := filepath.Base(m.Name)
+		if !t.showNotes && b == "NOTES.txt" {
+			continue
+		}
+		if strings.HasPrefix(b, "_") {
+			continue
+		}
+	fmt.Printf("---\n# Source: %s\n", m.Name)
+	fmt.Println(data)
+}
+	// If template is specified, try to run the template.
+	// if t.nameTemplate != "" {
+	// 	t.releaseName, _ = generateName(t.nameTemplate)
+
+	// }
+	// fmt.Println(listManifests)
+	c.String(http.StatusOK, "yaml已打印")
+ }
