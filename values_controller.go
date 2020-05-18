@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io/ioutil"
+	"log"
 	"regexp"
 
 	//"errors"
@@ -27,8 +28,9 @@ import (
 
 	//"k8s.io/helm/pkg/timeconv"
 	//vals "github.com/helm/cmd/helm"
-	"github.com/ghodss/yaml"
 	"path/filepath"
+
+	"github.com/ghodss/yaml"
 
 	hgetter "k8s.io/helm/pkg/getter"
 	//"fmt"
@@ -50,11 +52,16 @@ import (
 var repoURL = "https://kubernetes-charts.storage.googleapis.com/redis-9.3.0.tgz"
 
 // RemoteHelm defined
-type RemoteHelm struct{}
+//type RemoteHelm struct{}
 
-// NewRemoteHelm defined
-func NewRemoteHelm() RemoteHelm {
-	return RemoteHelm{}
+// NewtemplateCmd defined
+// func NewtemplateCmd() templateCmd {
+// 	return templateCmd{}
+// }
+
+// Link defined
+type Link struct {
+    URL   string   
 }
 
 type templateCmd struct {
@@ -72,9 +79,13 @@ type templateCmd struct {
 	outputDir    string
 }
 
-// Values defined
-func (controller RemoteHelm) Values(c *gin.Context) {
-	u, err := url.Parse(repoURL)
+// GetValues defined
+func GetValues(c *gin.Context) {
+	var link Link
+    if c.ShouldBind(&link) == nil {
+        log.Println(link.URL)
+    }
+	u, err := url.Parse(link.URL)
 	if err != nil {
 		c.Error(err)
 	}
@@ -99,8 +110,8 @@ func (controller RemoteHelm) Values(c *gin.Context) {
 	}
 
 	// print values
-	vl := chartutil.FromYaml(chart.Values.Raw)
-	f, err := flat.Flatten(vl, nil)
+	vls := chartutil.FromYaml(chart.Values.Raw)
+	f, err := flat.Flatten(vls, nil)
 	if err != nil {
 		c.Error(err)
 	}
@@ -108,9 +119,10 @@ func (controller RemoteHelm) Values(c *gin.Context) {
 	if err != nil {
 		c.Error(err)
 	}
-	fmt.Println(string(v))
-	c.String(http.StatusOK, "json已打印！")
-
+	//fmt.Println(string(v))
+	fmt.Println("json printed successful!")
+	//c.String(http.StatusOK, "ok")
+	c.String(http.StatusOK, string(v))
 }
 
 type valueFiles []string
@@ -378,8 +390,8 @@ func checkDependencies(ch *helmchart.Chart, reqs *chartutil.Requirements) error 
 // 	//return err
 // }
 
-// Mani defined
-func (controller RemoteHelm) Mani(c *gin.Context) {
+// Manifest defined
+func Manifest (c *gin.Context) {
 	var t templateCmd 
 
 	//Set up engine.

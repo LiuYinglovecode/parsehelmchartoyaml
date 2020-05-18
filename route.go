@@ -11,13 +11,18 @@ func setupRouter() *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
 	//r := gin.Default()
-	router := gin.New()
-	router.Use(gin.Recovery())
-	router.Use(gin.Logger())
+	r1 := gin.New()
+	r1.Use(gin.Recovery())
+	r1.Use(gin.Logger())
 
-	RemoteHelm := NewRemoteHelm()
-	router.GET("/1/helm/values", RemoteHelm.Values)
-	router.GET("/1/helm/upload", RemoteHelm.Mani)
+	v1 := r1.Group("/1/helm");
+	{
+		v1.GET("/values", GetValues)
+		v1.POST("/manifest", Manifest)
+	}
+	//RemoteHelm := NewRemoteHelm()
+	//router.GET("/1/helm/values", RemoteHelm.Values)
+	//router.PUT("/1/helm/upload", RemoteHelm.Mani)
 
-	return router
+	return r1
 }
