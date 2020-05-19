@@ -4,7 +4,7 @@ import (
 	"basic-gin2/pkg/util/flat"
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
+	//"io/ioutil"
 	"log"
 	"regexp"
 
@@ -49,7 +49,7 @@ import (
 	tversion "k8s.io/helm/pkg/version"
 )
 
-var repoURL = "https://kubernetes-charts.storage.googleapis.com/redis-9.3.0.tgz"
+//var repoURL = "https://kubernetes-charts.storage.googleapis.com/redis-9.3.0.tgz"
 
 // RemoteHelm defined
 //type RemoteHelm struct{}
@@ -61,7 +61,7 @@ var repoURL = "https://kubernetes-charts.storage.googleapis.com/redis-9.3.0.tgz"
 
 // Link defined
 type Link struct {
-    URL   string   
+	URL string
 }
 
 type templateCmd struct {
@@ -82,10 +82,11 @@ type templateCmd struct {
 // GetValues defined
 func GetValues(c *gin.Context) {
 	var link Link
-    if c.ShouldBind(&link) == nil {
-        log.Println(link.URL)
-    }
+	if c.ShouldBind(&link) == nil {
+		log.Println(link.URL)
+	}
 	u, err := url.Parse(link.URL)
+	//fmt.Print("the u string is: s%",u)
 	if err != nil {
 		c.Error(err)
 	}
@@ -291,7 +292,6 @@ func checkDependencies(ch *helmchart.Chart, reqs *chartutil.Requirements) error 
 // 	}
 // 	}
 
-
 // 	options := chartutil.ReleaseOptions{
 // 		Name:      t.releaseName,
 // 		Time:      timeconv.Now(),
@@ -300,7 +300,7 @@ func checkDependencies(ch *helmchart.Chart, reqs *chartutil.Requirements) error 
 
 // 	err = chartutil.ProcessRequirementsEnabled(l, config)
 // 	if err != nil {
-// 		c.Error(err) 
+// 		c.Error(err)
 // 	}
 
 // 	err = chartutil.ProcessRequirementsImportValues(l)
@@ -391,9 +391,9 @@ func checkDependencies(ch *helmchart.Chart, reqs *chartutil.Requirements) error 
 // }
 
 // Manifest defined
-func Manifest (c *gin.Context) {
-	var t templateCmd 
-
+func Manifest(c *gin.Context) {
+	var t templateCmd
+	//var link Link
 	//Set up engine.
 	renderer := engine.New()
 
@@ -404,10 +404,46 @@ func Manifest (c *gin.Context) {
 	}
 
 	// Check chart requirements to make sure all dependencies are present in /charts
-	l, err := chartutil.Load("G:/redis-9.3.0.tgz")
+	// l, err := chartutil.Load("G:/redis-9.3.0.tgz")
+	
+	id := c.Query("chart")
+	u, err := url.Parse(id)
+	//fmt.Print("the u string is:\n",u)
 	if err != nil {
 		c.Error(err)
 	}
+	
+	httpgetter, err := hgetter.NewHTTPGetter(u.String(), "", "", "")
+
+	if err != nil {
+		c.Error(err)
+	}
+
+	data, err := httpgetter.Get(u.String())
+
+	if err != nil {
+		c.Error(err)
+	}
+
+	r := bytes.NewReader(data.Bytes())
+
+	chart1, err := chartutil.LoadArchive(r)
+
+	if err != nil {
+		c.Error(err)
+	}
+
+	l := chart1
+	if err != nil {
+		c.Error(err)
+	} 
+	//fmt.Print("for debug, this is what loadarchive function output:\n",l)
+
+	//name := c.PostForm("name")
+	// l, err := chartutil.Load(name)
+	// if err != nil {
+	// 	c.Error(err)
+	// }
 	// u, err := url.Parse(repoURL)
 	// if err != nil {
 	// 	c.Error(err)
@@ -427,15 +463,30 @@ func Manifest (c *gin.Context) {
 	// r := bytes.NewReader(data.Bytes())
 
 	//chart, err := chartutil.LoadArchive(r)
+	// var jsonStr = []byte(`{"title":"Buy cheese and bread for breakfast."}`)
+	message := c.PostForm("message")
+	//var jsonStr = []byte(message)
+	fmt.Printf(message)
+	//req, err := http.NewRequest("POST", name, bytes.NewBuffer(jsonStr))
+    //req.Header.Set("X-Custom-Header", "myvalue")
+    //req.Header.Set("Content-Type", "application/json")
+	// client := &http.Client{}
+    // resp, err := client.Do(req)
+    // if err != nil {
+    //     panic(err)
+	// }
 
+	// message := c.PostForm("message")
 	//accept the json paramaters
-	tobeconverted, _ := ioutil.ReadFile("./d.json")
+	//tobeconverted, _ := ioutil.ReadFile("./d.json")
+	//tobeconverted, _ := message
+	
 
-	// // Declared an empty map interface
+	// Declared an empty map interface
 	var result map[string]*helmchart.Value
 
 	// // Unmarshal or Decode the JSON to the interface.
-	json.Unmarshal([]byte(tobeconverted), &result)
+	json.Unmarshal([]byte(message), &result)
 	// get combined values and create config
 	rawVals, err := vals(t.valueFiles, t.values, t.stringValues)
 	if err != nil {
@@ -475,7 +526,7 @@ func Manifest (c *gin.Context) {
 	}
 
 	for _, m := range tiller.SortByKind(listManifests) {
-	data := m.Content
+		data := m.Content
 		b := filepath.Base(m.Name)
 		if !t.showNotes && b == "NOTES.txt" {
 			continue
@@ -483,14 +534,23 @@ func Manifest (c *gin.Context) {
 		if strings.HasPrefix(b, "_") {
 			continue
 		}
-	fmt.Printf("---\n# Source: %s\n", m.Name)
-	fmt.Println(data)
-}
+		c.String(http.StatusOK, string("---\n# Source: "))
+		c.String(http.StatusOK, "%s\n", m.Name)
+		c.String(http.StatusOK, string(data))
+		//fmt.Printf("---\n# Source: %s\n", m.Name)
+		//fmt.Println(data)
+	}
 	// If template is specified, try to run the template.
 	// if t.nameTemplate != "" {
 	// 	t.releaseName, _ = generateName(t.nameTemplate)
 
 	// }
 	// fmt.Println(listManifests)
-	c.String(http.StatusOK, "yaml已打印")
- }
+	//c.String(http.StatusOK, "yaml已打印")
+	fmt.Println("yaml printed successful!")
+	c.JSON(200, gin.H{
+		"status":  "posted",
+		"message": message,
+	})
+	//c.String(http.StatusOK, string(v))
+}
