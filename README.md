@@ -1,3 +1,3 @@
-# adc-parsechart
+# parsechart
 
 解析chart文件
