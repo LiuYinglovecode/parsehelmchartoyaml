@@ -1,3 +1,3 @@
 # parsechart
 
-解析chart文件
+Used for parse helm chart
